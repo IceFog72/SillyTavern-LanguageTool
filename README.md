@@ -19,7 +19,7 @@ In SillyTavern open **Extensions → Install extension** and paste this reposito
 - Replacements keep your undo history (`Ctrl+Z`).
 - **Ignore word** button for names, places and invented words; manage the list in settings.
 - Ignores `{{macros}}`, HTML tags, URLs and `inline code` (can be turned off).
-- Check any text box: set one CSS selector per line (default `#send_textarea`).
+- Check these text boxes by default: `#send_textarea`, `#description_textarea`, `#firstmessage_textarea`, `#personality_textarea`, `#scenario_pole`, `#mes_example_textarea`, and `#main_prompt_quick_edit_textarea`. Add or remove selectors in settings.
 - Multiple languages per check (up to 8), or auto-detect.
 - Password fields are never checked or sent anywhere.
 

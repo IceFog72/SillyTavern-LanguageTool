@@ -8,10 +8,11 @@ const MAX_LANGUAGES = 8;
 const MAX_CHECK_LENGTH = 20000;
 const SERVICE_RETRY_MS = 5000;
 const ERROR_TOAST_INTERVAL_MS = 30000;
+const DEFAULT_INPUT_SELECTOR = '#send_textarea,#description_textarea,#firstmessage_textarea,#personality_textarea,#scenario_pole,#mes_example_textarea,#main_prompt_quick_edit_textarea';
 const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
     languages: ['auto'],
-    inputSelector: '#send_textarea',
+    inputSelector: DEFAULT_INPUT_SELECTOR,
     checkDelay: 700,
     ignoreProtected: true,
     ignoredWords: [],
@@ -94,6 +95,7 @@ function getSettings() {
     // Migrate the old single-language setting before defaults are applied.
     if (!Array.isArray(settings.languages) && typeof settings.language === 'string' && settings.language) settings.languages = [settings.language];
     delete settings.language;
+    if (settings.inputSelector === '#send_textarea') settings.inputSelector = DEFAULT_INPUT_SELECTOR;
     for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) settings[key] ??= structuredClone(value);
     settings.languages = [...new Set(settings.languages.filter(language => typeof language === 'string' && language))].slice(0, MAX_LANGUAGES);
     if (!settings.languages.length) settings.languages = ['auto'];
