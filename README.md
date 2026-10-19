@@ -36,3 +36,19 @@ In SillyTavern open **Extensions → Install extension** and paste this reposito
 
 Longer text is checked in chunks of approximately 20,000 characters.
 
+---
+
+## Project Support
+
+- **My Discord**: [https://discord.gg/2tJcWeMjFQ](https://discord.gg/2tJcWeMjFQ)
+- **SillyTavern Discord**: Find me on the [official ST server](https://discord.com/channels/1100685673633153084/1561882940512665600)
+- **GitHub Issues**: Bug reports and feature requests
+
+---
+
+## Support Development
+
+
+Support my projects: [💸 PayPal](https://www.paypal.com/ncp/payment/ABWFG6Y3SRGE6)
+
+---
