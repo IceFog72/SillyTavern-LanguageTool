@@ -1,0 +1,14 @@
+{
+    "display_name": "LanguageTool Grammar Checker",
+    "loading_order": 99,
+    "js": "index.js",
+    "css": "style.css",
+    "author": "IceFog72",
+    "version": "0.1.0",
+    "homePage": "https://github.com/IceFog72/SillyTavern-LanguageTool",
+    "auto_update": true,
+    "minimum_client_version": "1.18.0",
+    "hooks": {
+        "clean": "onClean"
+    }
+}
