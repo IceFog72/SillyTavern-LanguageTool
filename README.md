@@ -1,4 +1,5 @@
 # LanguageTool Grammar Checker (SillyTavern extension)
+<img width="496" height="186" alt="image" src="https://github.com/user-attachments/assets/9682fc93-c5d6-49d0-80fc-e0b64b712133" />
 
 Underlines spelling and grammar issues in SillyTavern text boxes using [LanguageTool](https://languagetool.org/), with click-to-fix suggestions.
 
