@@ -34,7 +34,7 @@ In SillyTavern open **Extensions → Install extension** and paste this reposito
 | Ignored words | Spelling issues for these words are hidden. |
 | Check delay | Milliseconds to wait after you stop typing. |
 
-Text longer than 20,000 characters is not checked.
+Longer text is checked in chunks of approximately 20,000 characters.
 
 ## License
 
