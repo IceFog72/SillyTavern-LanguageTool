@@ -5,7 +5,8 @@ Underlines spelling and grammar issues in SillyTavern text boxes using [Language
 > **Requires a server plugin.** This extension only provides the UI. It talks to a companion
 > SillyTavern server plugin that exposes `/api/plugins/languagetool/status` and
 > `/api/plugins/languagetool/check`. Server plugins must be enabled in SillyTavern's `config.yaml`.
-> <!-- TODO: link the server plugin repository and its install steps here. -->
+> Install the [LanguageTool server plugin](https://github.com/IceFog72/SillyTavern-LanguageToolPlugin)
+> separately and enable server plugins in `config.yaml`.
 
 ## Install
 
