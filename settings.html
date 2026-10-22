@@ -11,23 +11,14 @@
         <small id="lt_service_status" class="lt_service_status" title="Click to re-check the plugin">Checking LanguageTool plugin…</small>
 
         <span class="lt_settings_label">Languages to check</span>
+        <div id="lt_language_summary" class="lt_language_summary" aria-label="Selected languages"></div>
+        <input id="lt_language_filter" class="text_pole lt_language_filter" type="search" placeholder="Filter languages…" aria-label="Filter languages">
         <div id="lt_languages" class="lt_language_picker" role="group" aria-label="Languages to check">
             {{#each languages}}
             <label class="lt_language_option"><input type="checkbox" value="{{value}}"><span>{{label}}</span></label>
             {{/each}}
         </div>
         <small>Select one or more languages, up to 8 per check.</small>
-
-        <label for="lt_input_selector">Text inputs to check (CSS selector)</label>
-        <textarea id="lt_input_selector" class="text_pole lt_input_selector" rows="8" placeholder="#send_textarea
-#description_textarea
-#firstmessage_textarea
-#personality_textarea
-#scenario_pole
-#mes_example_textarea
-#main_prompt_quick_edit_textarea
-#curEditTextarea"></textarea>
-        <small>Put one CSS selector per line. Commas are also supported.</small>
 
         <label class="checkbox_label" for="lt_ignore_protected">
             <input id="lt_ignore_protected" type="checkbox">
@@ -47,7 +38,21 @@
         <textarea id="lt_ignored_rules" class="text_pole lt_ignored_words" rows="3" placeholder="One LanguageTool rule ID per line (e.g. EN_QUOTES)"></textarea>
         <small>Grammar and style issues from these rules are hidden. You can also add rules with "Ignore rule" in the results panel.</small>
 
-        <label for="lt_check_delay">Check delay (milliseconds)</label>
-        <input id="lt_check_delay" class="text_pole" type="number" min="100" max="10000" step="100">
+        <details class="lt_advanced">
+            <summary>Advanced</summary>
+            <label for="lt_input_selector">Text inputs to check (CSS selector)</label>
+            <textarea id="lt_input_selector" class="text_pole lt_input_selector" rows="8" placeholder="#send_textarea
+#description_textarea
+#firstmessage_textarea
+#personality_textarea
+#scenario_pole
+#mes_example_textarea
+#main_prompt_quick_edit_textarea
+#curEditTextarea"></textarea>
+            <small>Put one CSS selector per line. Commas are also supported.</small>
+
+            <label for="lt_check_delay">Check delay (milliseconds)</label>
+            <input id="lt_check_delay" class="text_pole" type="number" min="100" max="10000" step="100">
+        </details>
     </div>
 </div>

@@ -343,3 +343,105 @@
     background: rgb(255 255 255 / 10%);
     opacity: 1;
 }
+
+/* Grammar issues use amber chips; spelling keeps the red default. */
+.lt_match_item.grammar .lt_replacement_chip:not(.lt_ignore_chip) {
+    background: #8a5a12;
+}
+
+.lt_match_item.grammar .lt_replacement_chip:not(.lt_ignore_chip):hover {
+    background: #a86d16;
+}
+
+/* Keep "Ignore word/rule" apart from the fixes. */
+.lt_replacement_chip.lt_ignore_chip {
+    margin-left: auto;
+}
+
+.lt_match_detail {
+    font-size: .85em;
+    line-height: 1.35;
+    opacity: .75;
+}
+
+.lt_text_highlights span.active {
+    background: color-mix(in srgb, #ff4d4d 35%, transparent);
+}
+
+.lt_text_highlights span.grammar.active {
+    background: color-mix(in srgb, #ffaa00 35%, transparent);
+}
+
+.lt_panel_title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.lt_count {
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: .75em;
+    background: #8f3447;
+}
+
+.lt_count.grammar {
+    background: #8a5a12;
+}
+
+.lt_language_summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+
+.lt_language_chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border: 1px solid color-mix(in srgb, #a57ad7 70%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, #a57ad7 22%, transparent);
+    color: var(--SmartThemeBodyColor, #eee);
+    cursor: pointer;
+    font-size: .85em;
+}
+
+.lt_language_chip i {
+    opacity: .7;
+}
+
+.lt_language_chip:hover i {
+    opacity: 1;
+}
+
+.lt_language_filter {
+    margin-bottom: 6px;
+}
+
+.lt_language_option[hidden] {
+    display: none;
+}
+
+.lt_advanced {
+    margin-top: 10px;
+}
+
+.lt_advanced summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.lt_advanced > label {
+    display: block;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+.lt_advanced > small {
+    display: block;
+    margin: 5px 0 9px;
+    opacity: .72;
+}

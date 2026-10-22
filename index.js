@@ -749,7 +749,12 @@ function renderPanel(state) {
     panel.className = `lt_results_panel${state.panelVisible ? ' visible' : ''}`;
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-label', 'LanguageTool issues');
-    panel.innerHTML = `<header class="lt_panel_header"><span><i class="fa-solid fa-spell-check"></i> ${visibleMatches.length} issue${visibleMatches.length === 1 ? '' : 's'}</span><span class="lt_panel_actions">${state.selectedMatch !== null ? '<button type="button" class="lt_panel_all">All</button>' : ''}<button type="button" class="lt_panel_close" title="Hide results (Esc)"><i class="fa-solid fa-xmark"></i></button></span></header><div class="lt_matches_list"></div>`;
+    const spellingCount = visibleMatches.filter(([match]) => isSpelling(match)).length;
+    const grammarCount = visibleMatches.length - spellingCount;
+    const counts = visibleMatches.length > 1
+        ? `${spellingCount ? `<span class="lt_count spelling" title="Spelling">${spellingCount}</span>` : ''}${grammarCount ? `<span class="lt_count grammar" title="Grammar and style">${grammarCount}</span>` : ''}`
+        : '';
+    panel.innerHTML = `<header class="lt_panel_header"><span class="lt_panel_title"><i class="fa-solid fa-spell-check"></i> ${visibleMatches.length} issue${visibleMatches.length === 1 ? '' : 's'}${counts}</span><span class="lt_panel_actions">${state.selectedMatch !== null ? '<button type="button" class="lt_panel_all">All</button>' : ''}<button type="button" class="lt_panel_close" title="Hide results (Esc)"><i class="fa-solid fa-xmark"></i></button></span></header><div class="lt_matches_list"></div>`;
     panel.querySelector('.lt_panel_close').addEventListener('click', () => closePanel(state));
     panel.querySelector('.lt_panel_all')?.addEventListener('click', () => { state.selectedMatch = null; renderPanel(state); });
     const list = panel.querySelector('.lt_matches_list');
@@ -763,8 +768,13 @@ function renderPanel(state) {
         value.textContent = original || ' ';
         const message = document.createElement('span');
         message.textContent = match.shortMessage || match.message || 'Possible issue';
-        if (match.message) message.title = match.message;
         heading.append(value, message);
+        // shortMessage is a title like "Possible typo"; the full message explains the issue.
+        const detail = match.shortMessage && match.message && match.message !== match.shortMessage ? document.createElement('div') : null;
+        if (detail) {
+            detail.className = 'lt_match_detail';
+            detail.textContent = match.message;
+        }
         const replacements = document.createElement('div');
         replacements.className = 'lt_replacements';
         for (const replacement of (match.replacements || []).slice(0, 5)) {
@@ -798,12 +808,19 @@ function renderPanel(state) {
             ignore.addEventListener('click', () => ignoreWord(original));
             replacements.append(ignore);
         }
-        item.append(heading, replacements);
+        item.append(...[heading, detail, replacements].filter(Boolean));
+        item.addEventListener('mouseenter', () => setActiveMarker(state, index));
+        item.addEventListener('mouseleave', () => setActiveMarker(state, null));
         list.append(item);
     }
     document.body.append(panel);
     state.panel = panel;
     positionPanel(state);
+}
+
+/** Emphasises the underline of the issue the pointer is over in the panel. */
+function setActiveMarker(state, matchIndex) {
+    for (const marker of state.inner?.children ?? []) marker.classList.toggle('active', marker.dataset.matchIndex === String(matchIndex));
 }
 
 function positionPanel(state) {
@@ -933,10 +950,39 @@ async function initSettings() {
     const ignoredRules = panel.querySelector('#lt_ignored_rules');
     const delay = panel.querySelector('#lt_check_delay');
     const languageInputs = [...languages.querySelectorAll('input[type="checkbox"]')];
+    const languageSummary = panel.querySelector('#lt_language_summary');
+    const languageFilter = panel.querySelector('#lt_language_filter');
+    const languageLabels = new Map(LANGUAGE_OPTIONS);
+    const renderLanguageSummary = () => {
+        languageSummary.replaceChildren(...settings.languages.map(code => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'lt_language_chip';
+            chip.title = 'Remove';
+            chip.dataset.language = code;
+            chip.append(languageLabels.get(code) ?? code, Object.assign(document.createElement('i'), { className: 'fa-solid fa-xmark' }));
+            return chip;
+        }));
+    };
+    languageSummary.addEventListener('click', event => {
+        const code = event.target.closest('.lt_language_chip')?.dataset.language;
+        const option = languageInputs.find(input => input.value === code);
+        if (!option) return;
+        option.checked = false;
+        languages.dispatchEvent(new Event('change'));
+    });
+    languageFilter.addEventListener('input', () => {
+        const query = languageFilter.value.trim().toLowerCase();
+        for (const input of languageInputs) {
+            const label = input.closest('.lt_language_option');
+            label.hidden = !!query && !`${label.textContent} ${input.value}`.toLowerCase().includes(query);
+        }
+    });
 
     enabled.checked = settings.enabled;
     protectedBox.checked = settings.ignoreProtected;
     for (const option of languageInputs) option.checked = settings.languages.includes(option.value);
+    renderLanguageSummary();
     selector.value = settings.inputSelector.split(',').join('\n');
     ignored.value = settings.ignoredWords.join('\n');
     namesBox.checked = settings.ignoreNames;
@@ -957,6 +1003,7 @@ async function initSettings() {
         settings.languages = picked.slice(0, MAX_LANGUAGES);
         if (!settings.languages.length) settings.languages = ['auto'];
         for (const option of languageInputs) option.checked = settings.languages.includes(option.value);
+        renderLanguageSummary();
         updateServiceStatus();
         scheduleAll();
         saveSettings();
