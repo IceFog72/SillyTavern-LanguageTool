@@ -770,7 +770,8 @@ function renderPanel(state) {
         message.textContent = match.shortMessage || match.message || 'Possible issue';
         heading.append(value, message);
         // shortMessage is a title like "Possible typo"; the full message explains the issue.
-        const detail = match.shortMessage && match.message && match.message !== match.shortMessage ? document.createElement('div') : null;
+        // Spelling messages only repeat "Possible spelling mistake found.", so they get no detail line.
+        const detail = !isSpelling(match) && match.shortMessage && match.message && match.message !== match.shortMessage ? document.createElement('div') : null;
         if (detail) {
             detail.className = 'lt_match_detail';
             detail.textContent = match.message;
