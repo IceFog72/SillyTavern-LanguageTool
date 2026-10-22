@@ -8,14 +8,18 @@ const MAX_LANGUAGES = 8;
 const MAX_CHECK_LENGTH = 20000;
 const SERVICE_RETRY_MS = 5000;
 const ERROR_TOAST_INTERVAL_MS = 30000;
-const DEFAULT_INPUT_SELECTOR = '#send_textarea,#description_textarea,#firstmessage_textarea,#personality_textarea,#scenario_pole,#mes_example_textarea,#main_prompt_quick_edit_textarea';
+const PREVIOUS_DEFAULT_INPUT_SELECTOR = '#send_textarea,#description_textarea,#firstmessage_textarea,#personality_textarea,#scenario_pole,#mes_example_textarea,#main_prompt_quick_edit_textarea';
+// #curEditTextarea is the box SillyTavern shows while you edit a chat message.
+const DEFAULT_INPUT_SELECTOR = `${PREVIOUS_DEFAULT_INPUT_SELECTOR},#curEditTextarea`;
 const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
     languages: ['auto'],
     inputSelector: DEFAULT_INPUT_SELECTOR,
     checkDelay: 700,
     ignoreProtected: true,
+    ignoreNames: true,
     ignoredWords: [],
+    ignoredRules: [],
 });
 // Text that is not prose in a roleplay context: {{macros}}, HTML tags, URLs, `inline code`.
 const PROTECTED_PATTERN = /\{\{[^\n]*?\}\}|<\/?[a-z][^>\n]*>|https?:\/\/[^\s<>"']+|`[^`\n]+`/gi;
@@ -50,6 +54,7 @@ const LANGUAGE_OPTIONS = [
 let settingsCache = null;
 let csrfToken;
 let serviceAvailable;
+let serviceInfo = null;
 let serviceCheckedAt = 0;
 let serviceStatusPromise;
 let settingsReady = false;
@@ -86,6 +91,12 @@ function normalizeWordList(value) {
     return [...new Set(list.map(word => String(word).trim().toLowerCase()).filter(Boolean))];
 }
 
+/** Rule IDs are case-sensitive (e.g. EN_A_VS_AN), so only trim and de-duplicate. */
+function normalizeRuleList(value) {
+    const list = Array.isArray(value) ? value : String(value ?? '').split(/[\r\n,]+/);
+    return [...new Set(list.map(rule => String(rule).trim()).filter(Boolean))];
+}
+
 function getSettings() {
     const store = getContext()?.extensionSettings;
     if (!store) return structuredClone(DEFAULT_SETTINGS);
@@ -95,12 +106,13 @@ function getSettings() {
     // Migrate the old single-language setting before defaults are applied.
     if (!Array.isArray(settings.languages) && typeof settings.language === 'string' && settings.language) settings.languages = [settings.language];
     delete settings.language;
-    if (settings.inputSelector === '#send_textarea') settings.inputSelector = DEFAULT_INPUT_SELECTOR;
+    if (settings.inputSelector === '#send_textarea' || settings.inputSelector === PREVIOUS_DEFAULT_INPUT_SELECTOR) settings.inputSelector = DEFAULT_INPUT_SELECTOR;
     for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) settings[key] ??= structuredClone(value);
     settings.languages = [...new Set(settings.languages.filter(language => typeof language === 'string' && language))].slice(0, MAX_LANGUAGES);
     if (!settings.languages.length) settings.languages = ['auto'];
     settings.inputSelector = normalizeSelectorList(settings.inputSelector) || DEFAULT_SETTINGS.inputSelector;
     settings.ignoredWords = normalizeWordList(settings.ignoredWords);
+    settings.ignoredRules = normalizeRuleList(settings.ignoredRules);
     settingsCache = settings;
     return settings;
 }
@@ -113,15 +125,29 @@ function saveSettings() {
 /* Plugin status + requests                                            */
 /* ------------------------------------------------------------------ */
 
+/** Problems the plugin reports while it still works: broken files, or auto-detect being off while it is selected. */
+function serviceWarnings() {
+    if (serviceAvailable !== true || !serviceInfo) return [];
+    const warnings = Array.isArray(serviceInfo.installProblems) ? serviceInfo.installProblems.map(String) : [];
+    if (!warnings.length && serviceInfo.autoDetect === false && serviceInfo.autoDetectError && getSettings().languages.includes('auto')) {
+        warnings.push(String(serviceInfo.autoDetectError));
+    }
+    return warnings;
+}
+
 function updateServiceStatus() {
     const status = document.querySelector('#lt_service_status');
     if (!status) return;
-    status.classList.toggle('lt_status_ok', serviceAvailable === true);
+    const warnings = serviceWarnings();
+    status.classList.toggle('lt_status_ok', serviceAvailable === true && !warnings.length);
+    status.classList.toggle('lt_status_warn', warnings.length > 0);
     status.classList.toggle('lt_status_error', serviceAvailable === false);
+    // The plugin's start error ends with the worker's log output; its first line is the useful part.
+    const startError = String(serviceInfo?.workerError ?? '').split('\n')[0];
     status.textContent = serviceAvailable === true
-        ? 'LanguageTool plugin is ready.'
+        ? ['LanguageTool plugin is ready.', ...warnings.map(warning => `• ${warning}`)].join('\n')
         : serviceAvailable === false
-            ? 'LanguageTool plugin is unavailable. Start or restart the server plugin (click to re-check).'
+            ? `LanguageTool plugin is unavailable. Start or restart the server plugin (click to re-check).${startError ? `\n${startError}` : ''}`
             : 'Checking LanguageTool plugin…';
 }
 
@@ -139,9 +165,11 @@ async function checkServiceStatus(force = false) {
         updateServiceStatus();
         try {
             const response = await fetch(`${API_BASE}/status?t=${Date.now()}`, { cache: 'no-store' });
-            serviceAvailable = response.ok && (await response.json()).ok === true;
+            serviceInfo = await response.json().catch(() => null);
+            serviceAvailable = response.ok && serviceInfo?.ok === true;
         } catch (error) {
             serviceAvailable = false;
+            serviceInfo = null;
             console.warn(LOG, 'Plugin status check failed:', error);
         }
         serviceCheckedAt = Date.now();
@@ -210,16 +238,28 @@ function protectedRanges(text) {
     return [...text.matchAll(PROTECTED_PATTERN)].map(match => [match.index, match.index + match[0].length]);
 }
 
-/** Drop malformed matches, matches inside protected text, and ignored misspellings. */
+/** Lower-cased words of the persona name and the current character (or group member) names. */
+function chatNameWords() {
+    const context = getContext();
+    if (!context) return [];
+    const names = [context.name1, context.name2];
+    const group = context.groupId ? context.groups?.find(item => item.id === context.groupId) : null;
+    for (const avatar of group?.members ?? []) names.push(context.characters?.find(character => character.avatar === avatar)?.name);
+    return names.filter(name => typeof name === 'string').flatMap(name => name.toLowerCase().split(/[^\p{L}\p{N}'’-]+/u)).filter(Boolean);
+}
+
+/** Drop malformed matches, matches inside protected text, ignored rules, and ignored misspellings. */
 function filterMatches(text, matches) {
     const settings = getSettings();
-    const ignored = new Set(settings.ignoredWords);
+    const ignored = new Set([...settings.ignoredWords, ...(settings.ignoreNames ? chatNameWords() : [])]);
+    const ignoredRules = new Set(settings.ignoredRules);
     const ranges = settings.ignoreProtected ? protectedRanges(text) : [];
     return matches.filter(match => {
         if (!Number.isInteger(match?.offset) || !Number.isInteger(match?.length)) return false;
         const end = match.offset + match.length;
         if (match.offset < 0 || match.length <= 0 || end > text.length) return false;
         if (ranges.some(([from, to]) => match.offset < to && end > from)) return false;
+        if (ignoredRules.has(match.rule?.id)) return false;
         if (match.rule?.issueType === 'misspelling' && ignored.has(text.slice(match.offset, end).toLowerCase())) return false;
         return true;
     });
@@ -358,7 +398,7 @@ function watchInputValues() {
 function createState(input) {
     const state = {
         input, parent: input.parentElement, lastValue: input.value, timer: null, requestId: 0, abort: null,
-        text: '', matches: [], selectedMatch: null, panelAnchor: null, panelVisible: false, checking: false,
+        text: '', checkedText: null, matches: [], selectedMatch: null, panelAnchor: null, panelVisible: false, checking: false,
         borderLeft: 0, borderTop: 0,
         toggle: null, panel: null, overlay: null, inner: null, mirror: null, observer: null,
         onInput: null, onScroll: null, onClick: null, onFocus: null,
@@ -369,7 +409,8 @@ function createState(input) {
     state.onScroll = () => syncScroll(state);
     state.onClick = () => handleCaretClick(state);
     state.onFocus = () => {
-        scheduleCheck(state);
+        // Clicking back into a box must not re-send text that has results or is being checked.
+        if (!state.checking && input.value !== state.checkedText) scheduleCheck(state);
         queueViewportUpdate();
     };
     input.addEventListener('input', state.onInput);
@@ -611,6 +652,7 @@ async function checkTarget(state) {
         }
         if (requestId !== state.requestId || state.input.value !== text || !targets.has(state.input)) return;
         state.text = text;
+        state.checkedText = text;
         state.matches = filterMatches(text, matches);
         state.selectedMatch = null;
         renderHighlights(state);
@@ -628,6 +670,7 @@ async function checkTarget(state) {
 }
 
 function clearResult(state) {
+    state.checkedText = null;
     state.matches = [];
     state.text = state.input.value;
     state.selectedMatch = null;
@@ -737,6 +780,15 @@ function renderPanel(state) {
             none.textContent = 'No automatic replacement';
             replacements.append(none);
         }
+        if (!isSpelling(match) && match.rule?.id) {
+            const ignoreRuleButton = document.createElement('button');
+            ignoreRuleButton.type = 'button';
+            ignoreRuleButton.className = 'lt_replacement_chip lt_ignore_chip';
+            ignoreRuleButton.textContent = 'Ignore rule';
+            ignoreRuleButton.title = `Never show this kind of issue again (${match.rule.id})`;
+            ignoreRuleButton.addEventListener('click', () => ignoreRule(match.rule.id));
+            replacements.append(ignoreRuleButton);
+        }
         if (isSpelling(match)) {
             const ignore = document.createElement('button');
             ignore.type = 'button';
@@ -831,6 +883,15 @@ function ignoreWord(word) {
     refilterAll();
 }
 
+function ignoreRule(ruleId) {
+    const settings = getSettings();
+    if (!settings.ignoredRules.includes(ruleId)) settings.ignoredRules.push(ruleId);
+    const field = document.querySelector('#lt_ignored_rules');
+    if (field) field.value = settings.ignoredRules.join('\n');
+    saveSettings();
+    refilterAll();
+}
+
 /* ------------------------------------------------------------------ */
 /* Settings UI                                                         */
 /* ------------------------------------------------------------------ */
@@ -868,6 +929,8 @@ async function initSettings() {
     const selector = panel.querySelector('#lt_input_selector');
     const protectedBox = panel.querySelector('#lt_ignore_protected');
     const ignored = panel.querySelector('#lt_ignored_words');
+    const namesBox = panel.querySelector('#lt_ignore_names');
+    const ignoredRules = panel.querySelector('#lt_ignored_rules');
     const delay = panel.querySelector('#lt_check_delay');
     const languageInputs = [...languages.querySelectorAll('input[type="checkbox"]')];
 
@@ -876,6 +939,8 @@ async function initSettings() {
     for (const option of languageInputs) option.checked = settings.languages.includes(option.value);
     selector.value = settings.inputSelector.split(',').join('\n');
     ignored.value = settings.ignoredWords.join('\n');
+    namesBox.checked = settings.ignoreNames;
+    ignoredRules.value = settings.ignoredRules.join('\n');
     delay.value = settings.checkDelay;
 
     enabled.addEventListener('change', () => {
@@ -892,6 +957,7 @@ async function initSettings() {
         settings.languages = picked.slice(0, MAX_LANGUAGES);
         if (!settings.languages.length) settings.languages = ['auto'];
         for (const option of languageInputs) option.checked = settings.languages.includes(option.value);
+        updateServiceStatus();
         scheduleAll();
         saveSettings();
     });
@@ -909,6 +975,17 @@ async function initSettings() {
     ignored.addEventListener('change', () => {
         settings.ignoredWords = normalizeWordList(ignored.value);
         ignored.value = settings.ignoredWords.join('\n');
+        scheduleAll();
+        saveSettings();
+    });
+    namesBox.addEventListener('change', () => {
+        settings.ignoreNames = namesBox.checked;
+        scheduleAll();
+        saveSettings();
+    });
+    ignoredRules.addEventListener('change', () => {
+        settings.ignoredRules = normalizeRuleList(ignoredRules.value);
+        ignoredRules.value = settings.ignoredRules.join('\n');
         scheduleAll();
         saveSettings();
     });
@@ -948,6 +1025,9 @@ function init() {
         if (target?.closest?.('.lt_results_panel, .lt_panel_toggle')) return;
         eachState(state => { if (state.panelVisible && target !== state.input) closePanel(state); });
     });
+    const context = getContext();
+    // Names of the previous chat may have hidden real typos; check again with the new names.
+    if (context?.eventSource && context.event_types?.CHAT_CHANGED) context.eventSource.on(context.event_types.CHAT_CHANGED, scheduleAll);
     new MutationObserver(mutations => {
         if (mutations.some(isRelevantMutation)) queueRefreshTargets();
     }).observe(document.body, {

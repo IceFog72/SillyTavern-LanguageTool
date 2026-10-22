@@ -19,13 +19,14 @@
         <small>Select one or more languages, up to 8 per check.</small>
 
         <label for="lt_input_selector">Text inputs to check (CSS selector)</label>
-        <textarea id="lt_input_selector" class="text_pole lt_input_selector" rows="7" placeholder="#send_textarea
+        <textarea id="lt_input_selector" class="text_pole lt_input_selector" rows="8" placeholder="#send_textarea
 #description_textarea
 #firstmessage_textarea
 #personality_textarea
 #scenario_pole
 #mes_example_textarea
-#main_prompt_quick_edit_textarea"></textarea>
+#main_prompt_quick_edit_textarea
+#curEditTextarea"></textarea>
         <small>Put one CSS selector per line. Commas are also supported.</small>
 
         <label class="checkbox_label" for="lt_ignore_protected">
@@ -33,9 +34,18 @@
             <span>Ignore macros, HTML tags, URLs and inline code</span>
         </label>
 
+        <label class="checkbox_label" for="lt_ignore_names">
+            <input id="lt_ignore_names" type="checkbox">
+            <span>Ignore character and persona names</span>
+        </label>
+
         <label for="lt_ignored_words">Ignored words</label>
         <textarea id="lt_ignored_words" class="text_pole lt_ignored_words" rows="3" placeholder="One word per line (e.g. character or place names)"></textarea>
         <small>Spelling suggestions for these words are hidden. You can also add words with "Ignore word" in the results panel.</small>
+
+        <label for="lt_ignored_rules">Ignored rules</label>
+        <textarea id="lt_ignored_rules" class="text_pole lt_ignored_words" rows="3" placeholder="One LanguageTool rule ID per line (e.g. EN_QUOTES)"></textarea>
+        <small>Grammar and style issues from these rules are hidden. You can also add rules with "Ignore rule" in the results panel.</small>
 
         <label for="lt_check_delay">Check delay (milliseconds)</label>
         <input id="lt_check_delay" class="text_pole" type="number" min="100" max="10000" step="100">

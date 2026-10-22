@@ -18,20 +18,24 @@ In SillyTavern open **Extensions → Install extension** and paste this reposito
 - Highlights issues directly in the text box (red = spelling, amber = grammar).
 - Click a highlighted word, or the badge in the corner of the box, to see suggestions. `Esc` closes the panel.
 - Replacements keep your undo history (`Ctrl+Z`).
-- **Ignore word** button for names, places and invented words; manage the list in settings.
+- **Ignore word** button for names, places and invented words, and **Ignore rule** for grammar or style rules you don't want. Manage both lists in settings.
+- The names of your persona and the current character (or every group member) are never flagged as misspellings.
 - Ignores `{{macros}}`, HTML tags, URLs and `inline code` (can be turned off).
-- Check these text boxes by default: `#send_textarea`, `#description_textarea`, `#firstmessage_textarea`, `#personality_textarea`, `#scenario_pole`, `#mes_example_textarea`, and `#main_prompt_quick_edit_textarea`. Add or remove selectors in settings.
-- Multiple languages per check (up to 8), or auto-detect.
+- Check these text boxes by default: `#send_textarea`, `#description_textarea`, `#firstmessage_textarea`, `#personality_textarea`, `#scenario_pole`, `#mes_example_textarea`, `#main_prompt_quick_edit_textarea`, and the chat message edit box (`#curEditTextarea`). Add or remove selectors in settings.
+- Multiple languages per check (up to 8) for mixed-language text, or auto-detect. A word is flagged only when none of the selected languages knows it.
+- The settings show whether the plugin is ready, and list any install problems it reports (for example a fastText model that was not downloaded).
 
 ## Settings
 
 | Setting | Description |
 | --- | --- |
 | Enable grammar checking | Master switch. |
-| Languages to check | One or more LanguageTool language codes, or *Auto-detect*. |
+| Languages to check | One or more LanguageTool language codes, or *Auto-detect*. A language without a region (for example *English*) is checked as its default variant (*English (US)*). |
 | Text inputs to check | CSS selectors, one per line. |
 | Ignore macros, HTML tags, URLs and inline code | Hides issues found inside such text. |
+| Ignore character and persona names | Hides spelling issues for the persona and character names of the current chat. |
 | Ignored words | Spelling issues for these words are hidden. |
+| Ignored rules | Issues from these LanguageTool rule IDs are hidden. |
 | Check delay | Milliseconds to wait after you stop typing. |
 
 Longer text is checked in chunks of approximately 20,000 characters.

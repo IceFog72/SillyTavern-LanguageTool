@@ -70,6 +70,7 @@
 
 .lt_service_status {
     display: block;
+    white-space: pre-line;
     cursor: pointer;
     padding: 6px 8px;
     border: 1px solid rgb(255 255 255 / 12%);
@@ -92,6 +93,12 @@
     border-color: rgb(75 190 112 / 45%);
     background: rgb(45 150 78 / 16%);
     color: #8ee6a7 !important;
+}
+
+.lt_service_status.lt_status_warn {
+    border-color: rgb(255 170 0 / 50%);
+    background: rgb(255 170 0 / 12%);
+    color: #ffc95c !important;
 }
 
 .lt_service_status.lt_status_error {
